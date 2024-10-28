@@ -1,23 +1,128 @@
-// Código base para pagina web
-// Creado por: Juan Carlos
-// Fecha: 2022-02-20
-// Versión: 1.0
-// Descripción: Código base para una pagina web con HTML, CSS y JavaScript.
-//             Esta página web tiene un título, un encabezado, un párrafo y
-//             un botón para mostrar un mensaje en la consola.
-//             El código utiliza HTML para la estructura, CSS para el diseño
-//             y JavaScript para la interacción con el usuario.
-//             La página web utiliza la hoja de estilo CSS "estilos.css" y
-//             el archivo JavaScript "script.js".
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Interactivo de Aguascalientes</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+    </style>
+</head>
 <body>
-    <!-- Título de la página web -->
-     <h1>¡Bienvenido a mi página web!</h1>
-     <!-- Encabezado de la página web -->
-      <h2>Esta es una página web básica</h2>
-      <!-- Párrafo de la página web -->
-       <p>Esta página web tiene un título, un encabezado, un párra
-        o y un botón para mostrar un mensaje en la consola.</p>
-        <!-- Botón para mostrar un mensaje en la consola -->
-         <button onclick="mostrarMensaje()">Mostrar mensaje</button>
-         <script src="script.js"></script>
+    <h1>Mapa Interactivo de Aguascalientes</h1>
+    <div id="map"></div>
+    <div id="search-container">
+        <input id="search-input" type="text" placeholder="Buscar lugar o dirección">
+        <button onclick="buscarLugar()">Buscar</button>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+    <script>
+        // Inicializar el mapa centrado en Aguascalientes
+        var map = L.map('map').setView([21.88234, -102.28259], 13); // Coordenadas de Aguascalientes
+        
+        // Añadir capa de OpenStreetMap
+        var tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        // Marcador en Aguascalientes capital
+        var marker = L.marker([21.88234, -102.28259]).addTo(map);
+        marker.bindPopup("<b>¡Bienvenidos a Aguascalientes!</b><br>Capital del Estado.").openPopup();
+        
+        // Marcador en la Plaza de la Patria
+        var plazaPatria = L.marker([21.88187, -102.29495]).addTo(map);
+        plazaPatria.bindPopup("<b>Plaza de la Patria</b><br>Corazón de Aguascalientes.");
+        
+        // Marcador en el Museo Nacional de la Muerte
+        var museoMuerte = L.marker([21.88417, -102.28878]).addTo(map);
+        museoMuerte.bindPopup("<b>Museo Nacional de la Muerte</b><br>Un lugar único.");
+        
+        // Dibujar un círculo en el recinto de la Feria Nacional de San Marcos
+        var feriaSanMarcos = L.circle([21.87888, -102.29727], {
+            color: 'green',
+            fillColor: '#0f3',
+            fillOpacity: 0.5,
+            radius: 300
+        }).addTo(map);
+        feriaSanMarcos.bindPopup("<b>Feria Nacional de San Marcos</b><br>El evento más importante de Aguascalientes.");
+        
+        // Dibujar un polígono para el Centro Histórico
+        var centroHistorico = L.polygon([
+            [21.8821, -102.2935],
+            [21.8829, -102.2865],
+            [21.8797, -102.2860],
+            [21.8792, -102.2920]
+        ]).addTo(map);
+        centroHistorico.bindPopup("<b>Centro Histórico de Aguascalientes</b><br>Una joya colonial.");
+        
+        // Capa de imagen personalizada (overlay)
+        var imagenOverlay = L.imageOverlay('D:/Imagenes/Memo.png', [
+            [21.887, -102.305], // Coordenadas de la esquina superior izquierda
+            [21.878, -102.285]  // Coordenadas de la esquina inferior derecha
+        ]);
+        
+        // Control de capas base y superpuestas
+        var baseMaps = {
+            "Mapa base": tileLayer
+        };
+        
+        var overlayMaps = {
+            "Lugares importantes": L.layerGroup([marker, plazaPatria, museoMuerte]),
+            "Feria de San Marcos": feriaSanMarcos,
+            "Centro Histórico": centroHistorico,
+            "Imagen Personalizada": imagenOverlay // Nueva capa de imagen
+        };
+        
+        // Añadir control de capas
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+        
+        // Obtener la ubicación actual del usuario
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const usuario = [position.coords.latitude, position.coords.longitude];
+                map.setView(usuario, 14);
+                // Agregar un marcador en la ubicación del usuario
+                const usuariomarcador = L.marker(usuario).addTo(map)
+                    .bindPopup('En este momento te encuentras aquí').openPopup();
+            }, () => {
+                alert('No se puede obtener la ubicación');
+            });
+        } else {
+            alert('Geolocalización no soportada por este navegador.');
+        }
+        
+        // Función para buscar lugar
+        function buscarLugar() {
+            const consultar = document.getElementById('search-input').value;
+            if (consultar) {
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${consultar}`)
+                .then(response => response.json())
+                .then(datos => {
+                    if (datos && datos.length > 0) {
+                        const { lat, lon, display_name } = datos[0]; 
+                        const lugar = [lat, lon];
+                        map.setView(lugar, 14);
+                        const marcador = L.marker(lugar).addTo(map)
+                            .bindPopup(display_name).openPopup();
+                    } else {
+                        alert('Lugar no encontrado. Intenta otra búsqueda.');
+                    }
+                })
+                .catch(error => {
+                    alert('Ocurrió un error al buscar la ubicación.');
+                    console.error(error);
+                });
+            } else {
+                alert('Por favor, ingresa un lugar o dirección.');
+            }
+        }
+    </script>
 </body>
+</html>
